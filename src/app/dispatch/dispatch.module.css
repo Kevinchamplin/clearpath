@@ -1,0 +1,215 @@
+/* ClearPath Dispatch View — high-contrast, large-text for tablets and fire apparatus */
+
+.page {
+  min-height: 100vh;
+  background: #0f172a;
+  color: #f8fafc;
+  font-family: system-ui, -apple-system, sans-serif;
+  padding: 0 0 2rem;
+}
+
+/* ── Header ────────────────────────────────────────────────────── */
+.header {
+  background: #1e293b;
+  border-bottom: 2px solid #334155;
+  padding: 1rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.headerTitle {
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #f8fafc;
+  margin: 0;
+}
+
+.headerTitle span {
+  color: #38bdf8;
+}
+
+.clock {
+  font-size: 1.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #94a3b8;
+  letter-spacing: 0.05em;
+}
+
+.refreshBadge {
+  font-size: 0.8rem;
+  color: #64748b;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 4px;
+  padding: 0.25rem 0.6rem;
+}
+
+/* ── Fourth Ave viaduct banner ─────────────────────────────────── */
+.viaductBanner {
+  margin: 1rem 1.5rem 0;
+  background: #431407;
+  border: 2px solid #ea580c;
+  border-radius: 8px;
+  padding: 0.75rem 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fed7aa;
+}
+
+.viaductIcon {
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+
+/* ── Grid of crossing cards ────────────────────────────────────── */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+}
+
+/* ── Individual crossing card ──────────────────────────────────── */
+.card {
+  background: #1e293b;
+  border-radius: 12px;
+  border: 2px solid #334155;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.cardAlert {
+  border-color: #ef4444;
+  background: #1a0a0a;
+}
+
+.cardClear {
+  border-color: #16a34a;
+}
+
+.crossingName {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #f8fafc;
+  line-height: 1.2;
+}
+
+/* ── Status badge ──────────────────────────────────────────────── */
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 2rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  border-radius: 8px;
+  padding: 0.4rem 0.9rem;
+  width: fit-content;
+}
+
+.statusClear {
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.1);
+  border: 2px solid #16a34a;
+}
+
+.statusAlert {
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.12);
+  border: 2px solid #ef4444;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.55; }
+}
+
+/* ── Train detail row ──────────────────────────────────────────── */
+.trainDetail {
+  background: #0f172a;
+  border-radius: 6px;
+  padding: 0.6rem 0.9rem;
+  font-size: 1rem;
+  color: #cbd5e1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.trainDetailLabel {
+  color: #94a3b8;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.trainDetailValue {
+  color: #f1f5f9;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+/* ── Community report row ──────────────────────────────────────── */
+.communityReport {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  background: #1c1917;
+  border-left: 3px solid #f59e0b;
+  border-radius: 4px;
+  padding: 0.5rem 0.8rem;
+  font-size: 0.9rem;
+  color: #fde68a;
+}
+
+/* ── Error / loading states ────────────────────────────────────── */
+.loadingText {
+  color: #64748b;
+  font-size: 1.1rem;
+  font-style: italic;
+  padding: 2rem 1.5rem;
+  text-align: center;
+}
+
+.errorBanner {
+  margin: 1rem 1.5rem;
+  background: #431407;
+  border: 1px solid #b91c1c;
+  border-radius: 8px;
+  padding: 0.75rem 1.25rem;
+  color: #fca5a5;
+  font-size: 0.95rem;
+}
+
+/* ── Footer ────────────────────────────────────────────────────── */
+.footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #1e293b;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.footerLink {
+  color: #38bdf8;
+  text-decoration: none;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.footerLink:hover {
+  text-decoration: underline;
+}

@@ -2,6 +2,30 @@
 
 ## [Unreleased]
 
+### Added (2026-06-23, sprint-5-community) [1h]
+- Community blockage report form (/report) with BNSF and FRA contact info
+- Illinois Valley corridor page (/corridor) with fork-for-your-town guide
+- Press kit page (/press) for journalists and city officials
+
+### Added (2026-06-23, sprint-4-data) [0.75h]
+- Expanded watchTrains to include Illinois Service and Empire Builder trains
+- Delay display, next station, viaduct note, and BNSF contact in CrossingStatus
+- Fourth Ave viaduct clearance data and alternative route notes in town config
+
+### Added (2026-06-23, sprint-3-dispatch) [0.75h]
+- Dispatch view (/dispatch) — large-text tablet view, 15s auto-refresh
+- Printable crossing map (/print) with FRA IDs, coordinates, emergency contacts
+
+### Added (2026-06-23, sprint-2-realtime) [1h]
+- SSE stream endpoint /api/trains/stream for push updates
+- PWA manifest and service worker for home screen install
+- Next station display on train cards
+
+### Added (2026-06-23, sprint-1-content) [1h]
+- About page with the Mendota story, BNSF incident, fire chief quotes
+- How It Works page explaining Amtrak tracking and community reporting
+- Nav component across all pages
+
 ### Added (2026-06-23, clearpath-init) [1.5h]
 - Initial scaffold: Next.js 14 App Router + TypeScript + Leaflet
 - `src/config/town.ts` — forkable town config with Mendota, IL grade crossings (FRA IDs, lat/lng)

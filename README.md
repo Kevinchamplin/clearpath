@@ -34,6 +34,19 @@ Long trains blocking grade crossings delay first responders. This is a real publ
 
 That's it.
 
+## Pages
+
+| Route | Description |
+|-------|-------------|
+| `/` | Live map dashboard |
+| `/about` | The Mendota story and why this exists |
+| `/how-it-works` | Technical explanation |
+| `/dispatch` | First responder dispatch view (large text, 15s refresh) |
+| `/report` | Report a blocked crossing |
+| `/print` | Printable crossing reference card |
+| `/corridor` | Illinois Valley towns and fork guide |
+| `/press` | Press kit for journalists and officials |
+
 ## Stack
 
 - Next.js 14 (App Router) + TypeScript

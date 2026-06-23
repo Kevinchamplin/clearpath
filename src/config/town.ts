@@ -7,6 +7,7 @@ export interface Crossing {
   lat: number;
   lng: number;
   street: string;
+  alternateRouteNote?: string;
 }
 
 export interface TownConfig {
@@ -18,6 +19,7 @@ export interface TownConfig {
   crossings: Crossing[];
   // Amtrak train numbers that pass through this town
   watchTrains: string[];
+  viaductNote?: string;
 }
 
 const config: TownConfig = {
@@ -26,8 +28,10 @@ const config: TownConfig = {
   lat: 41.5514,
   lng: -89.1234,
   zoom: 14,
-  // California Zephyr (5 westbound, 6 eastbound) runs Chicago→Mendota→Galesburg→Denver
-  watchTrains: ["5", "6"],
+  // California Zephyr (5/6), Empire Builder, and Illinois Service trains on the Chicago corridor
+  // Illinois Zephyr/Carl Sandburg (300–303, 381, 383, 390, 391) added for full local coverage
+  watchTrains: ["7", "8", "5", "6", "300", "301", "302", "303", "381", "383", "390", "391"],
+  viaductNote: "Fourth Ave Viaduct (13′2″ clearance) — NOT suitable for aerial/ladder trucks or heavy apparatus",
   crossings: [
     {
       id: "077482T",
@@ -42,6 +46,7 @@ const config: TownConfig = {
       lat: 41.5511,
       lng: -89.1220,
       street: "Main St",
+      alternateRouteNote: "Blocked? Use 4th Ave Viaduct — 13′2″ max height",
     },
     {
       id: "077484F",
