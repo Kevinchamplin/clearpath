@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+### Changed (2026-06-23, world-class-safety-ui) [3h]
+- globals.css — complete safety-first design system: 16px base, `--clear`/`--approaching`/`--blocked` tokens, card-panel crossings with shadow, shimmer skeleton animation, `100dvh` layout, mobile `flex-direction: column-reverse` puts status cards ABOVE map
+- CrossingStatus.tsx — status pill (CLEAR / IN X MIN / BLOCKED) answers "can I cross?" at a glance; big 18px tabular ETA numbers; MAX_ETA_MIN=480 filter (no 6000-min trains); .slice(0,3) cap; nextStation null guard; freight badge via CSS classes
+- amtrak.ts — `nextStation` parsing from `stations[]` array (first non-departed station); `TrainPosition.nextStation` typed with `code/name/schArr`
+- Nav.tsx + layout.tsx — `MobileBottomNav` (Map/Report/Dispatch/Info fixed bottom bar with safe-area inset); `dispatch-mode` body class CSS rule
+- dispatch/page.tsx + dispatch.module.css — full-screen overlay (z-index 1001, covers global nav + bottom nav); SSE stream with shimmer skeleton loading; live clock; CLEAR (dark green) / ALERT (amber/red pulsing) card variants; 2→1 col responsive grid
+- about/page.tsx — dark hero with May 28 BNSF incident card, 4h blockage stat, Fire Chief Rutishauser + 3 regional chief quotes, feature cards, OSS section, builder card
+- how-it-works/page.tsx — numbered data-flow timeline (Amtrak→Haversine→SSE→screen), freight detection gap section, data freshness table, FAQ cards
+- report/page.tsx — BNSF emergency bar at top, 44px+ touch targets, 52px submit button, success state, recent reports list
+- corridor/page.tsx — town grid (Mendota highlighted), ~25% delay stat, shared problem narrative, Fork ClearPath dark card with GitHub CTA
+
 ### Added (2026-06-23, freight-detection-worker) [2.5h]
 - Python YOLO freight detection worker (worker/) — samples Steel Highway YouTube railcam at 1fps, detects trains via YOLOv8n, writes CLEAR/BLOCKED/UNKNOWN to MySQL
 - MySQL clearpath DB on ce-prod with crossing_status table (migration + clearpath_user provisioned)

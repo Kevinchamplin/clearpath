@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import "leaflet/dist/leaflet.css";
-import Nav from "@/components/Nav";
+import Nav, { MobileBottomNav } from "@/components/Nav";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -24,6 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={inter.className}>
         <Nav />
         {children}
+        <MobileBottomNav />
       </body>
     </html>
   );

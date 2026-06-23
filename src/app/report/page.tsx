@@ -29,6 +29,14 @@ function nowLocal(): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
+function timeAgo(iso: string): string {
+  const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000)
+  if (diff < 60) return `${diff}s ago`
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
 function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString('en-US', {
     month: 'short',
@@ -38,6 +46,27 @@ function formatDateTime(iso: string): string {
     minute: '2-digit',
     hour12: true,
   })
+}
+
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '12px 14px',
+  fontSize: '16px',
+  border: '2px solid #e2e8f0',
+  borderRadius: '8px',
+  background: '#fff',
+  color: '#0f172a',
+  fontFamily: 'system-ui, -apple-system, sans-serif',
+  outline: 'none',
+  boxSizing: 'border-box',
+}
+
+const labelStyle: React.CSSProperties = {
+  display: 'block',
+  fontWeight: 700,
+  fontSize: '0.9375rem',
+  marginBottom: '6px',
+  color: '#0f172a',
 }
 
 export default function ReportPage() {
@@ -110,200 +139,288 @@ export default function ReportPage() {
   }
 
   return (
-    <main style={{ maxWidth: 680, margin: '0 auto', padding: '2rem 1rem', fontFamily: 'system-ui, sans-serif' }}>
-      <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.25rem' }}>
-        Report a Blocked Crossing
-      </h1>
-      <p style={{ color: '#555', marginBottom: '2rem' }}>
-        Help first responders and neighbors by logging a blocked grade crossing.
-      </p>
+    <main style={{ fontFamily: 'system-ui, -apple-system, sans-serif', color: 'var(--text)', paddingBottom: '4rem' }}>
+      <style>{`
+        .report-input:focus {
+          border-color: #1d4ed8 !important;
+          box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.15);
+        }
+        @media (max-width: 600px) {
+          .report-inner { padding: 1rem !important; }
+          .report-card { padding: 1.25rem !important; }
+        }
+      `}</style>
 
-      {submitted ? (
-        <div style={{ background: '#f0fdf4', border: '1px solid #16a34a', borderRadius: 8, padding: '1.5rem', marginBottom: '2rem' }}>
-          <h2 style={{ color: '#15803d', marginTop: 0 }}>Report submitted — thank you.</h2>
-          <p style={{ margin: '0 0 1rem' }}>
-            Your report for <strong>{submitted.crossing}</strong> has been recorded.
-          </p>
-          <ul style={{ margin: '0 0 1rem', paddingLeft: '1.25rem', lineHeight: 1.8 }}>
-            <li>
-              <strong>Train still blocking?</strong>{' '}
-              <a href="tel:18008325452" style={{ color: '#15803d' }}>
-                BNSF Emergency Line: 1-800-832-5452
-              </a>
-            </li>
-            <li>
-              <strong>File a formal complaint:</strong>{' '}
-              <a href="tel:18004240201" style={{ color: '#15803d' }}>
-                FRA Safety Hotline: 1-800-424-0201
-              </a>
-            </li>
-            <li>
-              <a
-                href={`mailto:citymanager@cityofmendota.com,mayor@cityofmendota.com?subject=${encodeURIComponent(`Grade Crossing Blockage — ${submitted.crossing}`)}&body=${buildEmailBody(submitted)}`}
-                style={{ color: '#15803d' }}
-              >
-                Email this report to Mendota city officials
-              </a>
-            </li>
-          </ul>
-          <button
-            onClick={() => setSubmitted(null)}
-            style={{ background: '#15803d', color: '#fff', border: 'none', borderRadius: 6, padding: '0.5rem 1.25rem', cursor: 'pointer' }}
-          >
-            Report another crossing
-          </button>
-        </div>
-      ) : (
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <div>
-            <label style={{ display: 'block', fontWeight: 600, marginBottom: 4 }}>
-              Crossing <span style={{ color: '#dc2626' }}>*</span>
-            </label>
-            <select
-              value={crossing}
-              onChange={e => setCrossing(e.target.value)}
-              required
-              style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '1rem' }}
-            >
-              {CROSSINGS.map(c => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
-          </div>
+      {/* Emergency bar */}
+      <div style={{
+        background: '#dc2626',
+        color: '#fff',
+        padding: '0.875rem 1.5rem',
+        textAlign: 'center',
+        fontSize: '1rem',
+        fontWeight: 700,
+        lineHeight: 1.5,
+      }}>
+        🚨 Train still blocking?{' '}
+        <a href="tel:18008325452" style={{ color: '#fff', textDecoration: 'underline' }}>
+          Call BNSF Emergency: 1-800-832-5452
+        </a>
+      </div>
 
-          <div>
-            <label style={{ display: 'block', fontWeight: 600, marginBottom: 4 }}>
-              Railroad <span style={{ color: '#dc2626' }}>*</span>
-            </label>
-            <select
-              value={railroad}
-              onChange={e => setRailroad(e.target.value)}
-              required
-              style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '1rem' }}
-            >
-              {RAILROADS.map(r => (
-                <option key={r} value={r}>{r}</option>
-              ))}
-            </select>
-          </div>
+      <div className="report-inner" style={{ maxWidth: 640, margin: '0 auto', padding: '2.5rem 1.5rem' }}>
 
-          <div>
-            <label style={{ display: 'block', fontWeight: 600, marginBottom: 4 }}>
-              When blocked <span style={{ color: '#dc2626' }}>*</span>
-            </label>
-            <input
-              type="datetime-local"
-              value={reportedAt}
-              onChange={e => setReportedAt(e.target.value)}
-              required
-              style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '1rem' }}
-            />
-          </div>
-
-          <div>
-            <label style={{ display: 'block', fontWeight: 600, marginBottom: 4 }}>
-              Duration blocked (minutes)
-            </label>
-            <input
-              type="number"
-              min={1}
-              max={480}
-              value={duration}
-              onChange={e => setDuration(e.target.value)}
-              placeholder="e.g. 45"
-              style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '1rem' }}
-            />
-          </div>
-
-          <div>
-            <label style={{ display: 'block', fontWeight: 600, marginBottom: 4 }}>
-              Description
-            </label>
-            <textarea
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              rows={3}
-              placeholder="Any details that might help responders"
-              style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '1rem', resize: 'vertical' }}
-            />
-          </div>
-
-          <div>
-            <label style={{ display: 'block', fontWeight: 600, marginBottom: 4 }}>
-              Your name
-            </label>
-            <input
-              type="text"
-              value={reporterName}
-              onChange={e => setReporterName(e.target.value)}
-              placeholder="Anonymous OK"
-              style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '1rem' }}
-            />
-          </div>
-
-          {error && (
-            <p style={{ color: '#dc2626', margin: 0 }}>{error}</p>
-          )}
-
-          <button
-            type="submit"
-            disabled={submitting}
-            style={{
-              background: submitting ? '#9ca3af' : '#1e40af',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 6,
-              padding: '0.75rem 1.5rem',
-              fontSize: '1rem',
-              fontWeight: 600,
-              cursor: submitting ? 'not-allowed' : 'pointer',
-            }}
-          >
-            {submitting ? 'Submitting…' : 'Submit Report'}
-          </button>
-        </form>
-      )}
-
-      {reports.length > 0 && (
-        <section style={{ marginTop: '3rem' }}>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '1rem' }}>
-            Recent Reports
-          </h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {reports.slice(0, 10).map(r => (
-              <div
-                key={r.id}
-                style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', background: '#f9fafb' }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.25rem', marginBottom: '0.5rem' }}>
-                  <strong style={{ fontSize: '1rem' }}>{r.crossing}</strong>
-                  <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>
-                    {r.railroad}
-                  </span>
-                </div>
-                <div style={{ fontSize: '0.875rem', color: '#374151', marginBottom: '0.25rem' }}>
-                  Blocked at: {formatDateTime(r.reported_at)}
-                  {r.duration_minutes != null && ` · ${r.duration_minutes} min`}
-                </div>
-                {r.description && (
-                  <p style={{ margin: '0.5rem 0 0', fontSize: '0.875rem', color: '#4b5563' }}>
-                    {r.description}
-                  </p>
-                )}
+        {submitted ? (
+          /* Success state */
+          <div style={{
+            background: '#f0fdf4',
+            border: '2px solid #15803d',
+            borderRadius: '12px',
+            padding: '2rem',
+            marginBottom: '2rem',
+            textAlign: 'center',
+          }}>
+            <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>✓</div>
+            <h2 style={{ fontSize: '1.375rem', fontWeight: 800, color: '#15803d', margin: '0 0 0.5rem' }}>
+              Report submitted. Thank you.
+            </h2>
+            <p style={{ color: '#166534', marginBottom: '1.5rem', lineHeight: 1.6 }}>
+              Your report for <strong>{submitted.crossing}</strong> is live on the map.
+            </p>
+            <div style={{
+              background: '#fff',
+              border: '1px solid #86efac',
+              borderRadius: '8px',
+              padding: '1rem 1.25rem',
+              textAlign: 'left',
+              marginBottom: '1.5rem',
+              fontSize: '0.9375rem',
+              lineHeight: 2,
+            }}>
+              <div>
+                <strong>Train still blocking?</strong>{' '}
+                <a href="tel:18008325452" style={{ color: '#15803d' }}>BNSF Emergency: 1-800-832-5452</a>
               </div>
-            ))}
+              <div>
+                <strong>File a complaint:</strong>{' '}
+                <a href="tel:18004240201" style={{ color: '#15803d' }}>FRA Safety Hotline: 1-800-424-0201</a>
+              </div>
+              <div>
+                <a
+                  href={`mailto:citymanager@cityofmendota.com,mayor@cityofmendota.com?subject=${encodeURIComponent(`Grade Crossing Blockage — ${submitted.crossing}`)}&body=${buildEmailBody(submitted)}`}
+                  style={{ color: '#15803d' }}
+                >
+                  Email report to Mendota city officials →
+                </a>
+              </div>
+            </div>
+            <button
+              onClick={() => setSubmitted(null)}
+              style={{
+                background: '#0f172a',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '0.75rem 1.75rem',
+                fontSize: '1rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              Submit Another Report
+            </button>
           </div>
-        </section>
-      )}
+        ) : (
+          /* Form */
+          <article className="report-card" style={{
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: '12px',
+            boxShadow: 'var(--shadow-md)',
+            padding: '2rem',
+            marginBottom: '2rem',
+          }}>
+            <h1 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.375rem' }}>
+              Report a Blocked Crossing
+            </h1>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '2rem', fontSize: '0.9375rem', lineHeight: 1.6 }}>
+              Help first responders and neighbors. Reports appear on the map immediately.
+            </p>
 
-      <div style={{ marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '1px solid #e5e7eb', fontSize: '0.875rem', color: '#6b7280' }}>
-        <p style={{ margin: 0 }}>
-          Emergency contacts —{' '}
-          <strong>Train still blocking?</strong>{' '}
-          <a href="tel:18008325452">BNSF Emergency Line: 1-800-832-5452</a>
-          {' · '}
-          <a href="tel:18004240201">FRA Safety Hotline: 1-800-424-0201</a>
-        </p>
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+
+              <div>
+                <label style={labelStyle}>
+                  Crossing <span style={{ color: '#dc2626' }}>*</span>
+                </label>
+                <select
+                  className="report-input"
+                  value={crossing}
+                  onChange={e => setCrossing(e.target.value)}
+                  required
+                  style={inputStyle}
+                >
+                  {CROSSINGS.map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={labelStyle}>
+                  When blocked <span style={{ color: '#dc2626' }}>*</span>
+                </label>
+                <input
+                  className="report-input"
+                  type="datetime-local"
+                  value={reportedAt}
+                  onChange={e => setReportedAt(e.target.value)}
+                  required
+                  style={inputStyle}
+                />
+              </div>
+
+              <div>
+                <label style={labelStyle}>
+                  Duration blocked (minutes)
+                </label>
+                <input
+                  className="report-input"
+                  type="number"
+                  min={1}
+                  max={480}
+                  value={duration}
+                  onChange={e => setDuration(e.target.value)}
+                  placeholder="e.g. 45"
+                  style={inputStyle}
+                />
+              </div>
+
+              <div>
+                <label style={labelStyle}>
+                  Railroad <span style={{ color: '#dc2626' }}>*</span>
+                </label>
+                <select
+                  className="report-input"
+                  value={railroad}
+                  onChange={e => setRailroad(e.target.value)}
+                  required
+                  style={inputStyle}
+                >
+                  {RAILROADS.map(r => (
+                    <option key={r} value={r}>{r}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={labelStyle}>
+                  Description <span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: '0.875rem' }}>(optional)</span>
+                </label>
+                <textarea
+                  className="report-input"
+                  value={description}
+                  onChange={e => setDescription(e.target.value)}
+                  rows={3}
+                  placeholder="Any details that might help responders — car count, direction, if it's moving…"
+                  style={{ ...inputStyle, resize: 'vertical' }}
+                />
+              </div>
+
+              <div>
+                <label style={labelStyle}>
+                  Your name <span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: '0.875rem' }}>(optional — anonymous OK)</span>
+                </label>
+                <input
+                  className="report-input"
+                  type="text"
+                  value={reporterName}
+                  onChange={e => setReporterName(e.target.value)}
+                  placeholder="Anonymous"
+                  style={inputStyle}
+                />
+              </div>
+
+              {error && (
+                <div style={{
+                  background: '#fef2f2',
+                  border: '1px solid #fca5a5',
+                  borderRadius: '8px',
+                  padding: '0.875rem 1rem',
+                  color: '#dc2626',
+                  fontSize: '0.9375rem',
+                  fontWeight: 600,
+                }}>
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={submitting}
+                style={{
+                  background: submitting ? '#94a3b8' : '#0f172a',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '0',
+                  height: '52px',
+                  fontSize: '1rem',
+                  fontWeight: 700,
+                  cursor: submitting ? 'not-allowed' : 'pointer',
+                  width: '100%',
+                  transition: 'background 0.15s',
+                }}
+              >
+                {submitting ? 'Submitting…' : 'Submit Report'}
+              </button>
+            </form>
+          </article>
+        )}
+
+        {/* Recent reports */}
+        {reports.length > 0 && (
+          <section>
+            <h2 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--text)' }}>
+              Recent Reports
+            </h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {reports.slice(0, 5).map(r => (
+                <div
+                  key={r.id}
+                  style={{
+                    background: 'var(--surface)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '8px',
+                    padding: '0.875rem 1rem',
+                    display: 'flex',
+                    gap: '1rem',
+                    alignItems: 'center',
+                    boxShadow: 'var(--shadow)',
+                  }}
+                >
+                  <div style={{
+                    width: '10px',
+                    height: '10px',
+                    borderRadius: '50%',
+                    background: 'var(--blocked)',
+                    flexShrink: 0,
+                  }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, fontSize: '0.9375rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {r.crossing}
+                    </div>
+                    <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                      {r.railroad} · {r.duration_minutes != null ? `${r.duration_minutes} min` : 'duration unknown'}
+                    </div>
+                  </div>
+                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', flexShrink: 0 }}>
+                    {timeAgo(r.submitted_at || r.reported_at)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
       </div>
     </main>
   )

@@ -43,7 +43,7 @@ interface TrainData {
   delayMinutes: number;
   statusMsg: string;
   crossings: CrossingEta[];
-  nextStation?: { name: string; schArr: string };
+  nextStation?: { code: string; name: string; schArr: string | null };
 }
 
 interface CrossingEta {

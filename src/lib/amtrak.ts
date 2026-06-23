@@ -13,6 +13,7 @@ export interface TrainPosition {
   destCode: string;
   statusMsg: string;
   delayMinutes: number;
+  nextStation?: { code: string; name: string; schArr: string | null };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -33,6 +34,13 @@ export async function fetchTrains(trainNumbers?: string[]): Promise<TrainPositio
     for (const t of instances) {
       if (t.trainState !== "Active") continue;
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const stations: any[] = Array.isArray(t.stations) ? t.stations : [];
+      const next = stations.find(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (s: any) => !String(s.status ?? "").toLowerCase().startsWith("departed")
+      );
+
       results.push({
         trainNumber: String(t.trainNum ?? num),
         trainName: String(t.routeName ?? ""),
@@ -46,6 +54,13 @@ export async function fetchTrains(trainNumbers?: string[]): Promise<TrainPositio
         statusMsg: String(t.statusMsg ?? "").trim(),
         // amtraker doesn't expose delay minutes directly; trainTimely is a string
         delayMinutes: parseDelayMinutes(t.trainTimely),
+        nextStation: next
+          ? {
+              code: String(next.stnCode ?? ""),
+              name: String(next.stnName ?? next.stnCode ?? ""),
+              schArr: next.schArr ? String(next.schArr) : null,
+            }
+          : undefined,
       });
     }
   }

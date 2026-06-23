@@ -15,7 +15,7 @@ interface TrainWithCrossings {
   speed: number;
   delayMinutes: number;
   crossings: CrossingEta[];
-  nextStation?: { name: string; schArr: string };
+  nextStation?: { code: string; name: string; schArr: string | null };
 }
 
 interface CommunityReport {
@@ -40,6 +40,20 @@ interface Props {
   freightStatus?: FreightStatus[];
 }
 
+// Only show trains within 8 hours (480 min) — anything beyond is not actionable
+const MAX_ETA_MIN = 480;
+
+interface CrossingAlert {
+  trainNumber: string;
+  trainName: string;
+  distanceMiles: number;
+  etaMinutes: number;
+  approaching: boolean;
+  speed: number;
+  delayMinutes: number;
+  nextStation?: { code: string; name: string; schArr: string | null };
+}
+
 export default function CrossingStatus({
   trains,
   fetchedAt,
@@ -48,7 +62,10 @@ export default function CrossingStatus({
   freightStatus = [],
 }: Props) {
   // Build per-crossing view: which trains are closest and approaching
-  const crossingMap: Record<string, { name: string; alerts: CrossingAlert[]; alternateRouteNote?: string }> = {};
+  const crossingMap: Record<
+    string,
+    { name: string; alerts: CrossingAlert[]; alternateRouteNote?: string }
+  > = {};
 
   trains.forEach((train) => {
     train.crossings.forEach((c) => {
@@ -59,7 +76,7 @@ export default function CrossingStatus({
           alternateRouteNote: c.alternateRouteNote,
         };
       }
-      if (c.etaMinutes !== null) {
+      if (c.etaMinutes !== null && c.etaMinutes <= MAX_ETA_MIN) {
         crossingMap[c.crossingId].alerts.push({
           trainNumber: train.trainNumber,
           trainName: train.trainName,
@@ -106,15 +123,17 @@ export default function CrossingStatus({
 
       {/* Viaduct note — shown whenever any train is approaching */}
       {anyApproaching && viaductNote && (
-        <div className="viaduct-note" style={{
-          background: "#fef9c3",
-          border: "1px solid #ca8a04",
-          borderRadius: "6px",
-          padding: "10px 14px",
-          marginBottom: "12px",
-          fontSize: "0.875rem",
-          color: "#713f12",
-        }}>
+        <div
+          style={{
+            background: "#fef9c3",
+            border: "1px solid #ca8a04",
+            borderRadius: "6px",
+            padding: "10px 14px",
+            margin: "12px 12px 0",
+            fontSize: "0.875rem",
+            color: "#713f12",
+          }}
+        >
           ℹ️ {viaductNote}
         </div>
       )}
@@ -126,131 +145,170 @@ export default function CrossingStatus({
           ? Math.floor((nowMs - new Date(report.reported_at).getTime()) / 60000)
           : null;
 
+        // Determine freight state for this crossing
+        const fs = freightStatus.find((f) => f.crossing_id === id);
+        const freightBlocked = fs?.state === "BLOCKED";
+        const freightAgeMin = fs
+          ? Math.floor((nowMs - new Date(fs.updated_at).getTime()) / 60000)
+          : null;
+        const blockedMin = fs?.blocked_since
+          ? Math.floor((nowMs - new Date(fs.blocked_since).getTime()) / 60000)
+          : null;
+
+        // Determine card class
+        let cardClass = "crossing-card";
+        if (freightBlocked) {
+          cardClass += " blocked";
+        } else if (hasAlert) {
+          cardClass += " alert";
+        } else {
+          cardClass += " clear";
+        }
+
+        // Determine status pill
+        let pillClass = "status-pill";
+        let pillText = "CLEAR";
+        let pillIcon = "✓";
+
+        if (freightBlocked) {
+          pillClass += " blocked";
+          pillText = "BLOCKED";
+          pillIcon = "✕";
+        } else if (hasAlert) {
+          pillClass += " approaching";
+          const minEta = crossing.alerts.find((a) => a.approaching)?.etaMinutes;
+          pillText = minEta != null ? `IN ${minEta} MIN` : "APPROACHING";
+          pillIcon = "⚠";
+        } else {
+          pillClass += " clear";
+          pillText = "CLEAR";
+          pillIcon = "✓";
+        }
+
+        // Freight badge class
+        const freightBadgeClass = fs
+          ? `freight-badge freight-${fs.state.toLowerCase()}`
+          : null;
+        const freightIcon =
+          fs?.state === "BLOCKED" ? "🔴" : fs?.state === "CLEAR" ? "🟢" : "⚫";
+        const freightLabel =
+          fs?.state === "BLOCKED"
+            ? `Freight blocked ${blockedMin ?? "?"}m`
+            : fs?.state === "CLEAR"
+            ? "Freight clear"
+            : "Freight status unknown";
+
         return (
-          <div key={id} className={`crossing-card ${hasAlert ? "alert" : "clear"}`}>
-            <div className="crossing-name">
-              <span className={`dot ${hasAlert ? "red" : "green"}`} />
-              {crossing.name}
+          <div key={id} className={cardClass}>
+            {/* Card Header */}
+            <div className="crossing-card-header">
+              <span className="crossing-name">
+                {crossing.name}
+              </span>
+              <span className={pillClass}>
+                {pillIcon} {pillText}
+              </span>
             </div>
 
-            {/* Camera-based freight detection badge */}
-            {(() => {
-              const fs = freightStatus.find((f) => f.crossing_id === id);
-              if (!fs) return null;
-              const ageMin = Math.floor(
-                (nowMs - new Date(fs.updated_at).getTime()) / 60000
-              );
-              const blockedMin = fs.blocked_since
-                ? Math.floor((nowMs - new Date(fs.blocked_since).getTime()) / 60000)
-                : null;
-              const { bg, border, text, icon } = {
-                BLOCKED: { bg: "#fef2f2", border: "#dc2626", text: "#991b1b", icon: "🔴" },
-                CLEAR:   { bg: "#f0fdf4", border: "#16a34a", text: "#14532d", icon: "🟢" },
-                UNKNOWN: { bg: "#f8fafc", border: "#94a3b8", text: "#475569", icon: "⚫" },
-              }[fs.state];
-              return (
-                <div style={{
-                  background: bg, border: `1px solid ${border}`,
-                  borderRadius: "4px", padding: "6px 10px", margin: "6px 0",
-                  fontSize: "0.8rem", color: text,
-                }}>
-                  {icon} Freight ({fs.state === "BLOCKED"
-                    ? `blocked ${blockedMin ?? "?"}m`
-                    : fs.state === "CLEAR" ? "clear" : "status unknown"
-                  })
+            {/* Freight camera badge */}
+            {fs && freightBadgeClass && (
+              <div className={freightBadgeClass}>
+                <span>{freightIcon}</span>
+                <span>
+                  <span className="freight-badge-label">{freightLabel}</span>
                   <span style={{ marginLeft: 8, opacity: 0.65 }}>
-                    · updated {ageMin}m ago
+                    · updated {freightAgeMin}m ago
                   </span>
-                  <span style={{ display: "block", opacity: 0.55, marginTop: 2, fontSize: "0.72rem" }}>
+                  <span className="freight-camera-note">
                     📷 camera inference — not authoritative dispatch data
                   </span>
+                </span>
+              </div>
+            )}
+
+            {/* Card Body */}
+            <div className="crossing-card-body">
+              {/* Community freight report */}
+              {report && (
+                <div
+                  style={{
+                    background: "#fffbeb",
+                    border: "1px solid #d97706",
+                    borderRadius: "6px",
+                    padding: "8px 12px",
+                    marginBottom: "8px",
+                    fontSize: "13px",
+                    color: "#92400e",
+                  }}
+                >
+                  📋 Community report: freight blocked {report.duration_minutes} min —{" "}
+                  {reportAgeMin} min ago
                 </div>
-              );
-            })()}
+              )}
 
-            {/* Community freight report */}
-            {report && (
-              <div style={{
-                background: "#fffbeb",
-                border: "1px solid #d97706",
-                borderRadius: "4px",
-                padding: "6px 10px",
-                margin: "6px 0",
-                fontSize: "0.8rem",
-                color: "#92400e",
-              }}>
-                📋 Community report: freight blocked {report.duration_minutes} min — {reportAgeMin} min ago
-              </div>
-            )}
+              {crossing.alerts.length === 0 ? (
+                <p className="no-trains">No trains tracked within 8 hours</p>
+              ) : (
+                crossing.alerts.slice(0, 3).map((alert) => (
+                  <div key={alert.trainNumber} className="train-row">
+                    <div>
+                      <div className="train-name">
+                        #{alert.trainNumber} {alert.trainName}
+                      </div>
+                      <div className="train-meta">
+                        {alert.distanceMiles} mi away
+                        {alert.nextStation?.name && alert.nextStation.name !== "undefined"
+                          ? ` · Next: ${alert.nextStation.name}`
+                          : ""}
+                        {alert.delayMinutes > 0 && ` · +${alert.delayMinutes}m late`}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <div className="train-eta-value">{alert.etaMinutes}</div>
+                      <div className="train-eta-label">min</div>
+                    </div>
+                  </div>
+                ))
+              )}
 
-            {/* BNSF emergency contacts — shown when a train is approaching */}
-            {hasAlert && (
-              <div style={{ fontSize: "0.75rem", color: "#6b7280", marginBottom: "4px" }}>
-                Report to BNSF: 1-800-832-5452 | FRA Safety: 1-800-424-0201
-              </div>
-            )}
-
-            {crossing.alerts.length === 0 ? (
-              <p className="no-trains">No trains tracked nearby</p>
-            ) : (
-              crossing.alerts.map((alert) => (
-                <div key={alert.trainNumber} className={`train-eta ${alert.approaching ? "approaching" : ""}`}>
-                  <span className="train-id">
-                    #{alert.trainNumber} {alert.trainName}
-                    {alert.nextStation && (
-                      <span style={{ display: "block", fontSize: "0.75rem", color: "#9ca3af", fontWeight: "normal" }}>
-                        Next stop: {alert.nextStation.name}
-                      </span>
-                    )}
-                  </span>
-                  <span className="eta-badge">
-                    {alert.approaching ? "⚠ " : ""}
-                    {alert.etaMinutes} min &nbsp;·&nbsp; {alert.distanceMiles} mi
-                    {alert.delayMinutes > 0 && (
-                      <span style={{
-                        display: "inline-block",
-                        marginLeft: "6px",
-                        background: "#fef3c7",
-                        color: "#b45309",
-                        borderRadius: "4px",
-                        padding: "1px 5px",
-                        fontSize: "0.75rem",
-                        fontWeight: 600,
-                      }}>
-                        +{alert.delayMinutes}m late
-                      </span>
-                    )}
-                  </span>
+              {/* Alternate route note */}
+              {crossing.alternateRouteNote && (
+                <div
+                  style={{
+                    fontSize: "12px",
+                    color: "var(--text-muted)",
+                    marginTop: "8px",
+                  }}
+                >
+                  {crossing.alternateRouteNote}
                 </div>
-              ))
-            )}
+              )}
 
-            {/* Alternate route note for this crossing */}
-            {crossing.alternateRouteNote && (
-              <div style={{ fontSize: "0.75rem", color: "#6b7280", marginTop: "6px" }}>
-                {crossing.alternateRouteNote}
-              </div>
-            )}
+              {/* BNSF/FRA contact — only when approaching */}
+              {hasAlert && (
+                <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "8px" }}>
+                  Report to{" "}
+                  <a href="tel:18008325452" style={{ color: "var(--blue)" }}>
+                    BNSF 1-800-832-5452
+                  </a>{" "}
+                  ·{" "}
+                  <a href="tel:18004240201" style={{ color: "var(--blue)" }}>
+                    FRA 1-800-424-0201
+                  </a>
+                </div>
+              )}
+            </div>
           </div>
         );
       })}
 
       {trains.length === 0 && (
         <div className="crossing-card clear">
-          <p className="no-trains">No trains currently tracked.</p>
+          <div className="crossing-card-body">
+            <p className="no-trains">No trains currently tracked.</p>
+          </div>
         </div>
       )}
     </div>
   );
-}
-
-interface CrossingAlert {
-  trainNumber: string;
-  trainName: string;
-  distanceMiles: number;
-  etaMinutes: number;
-  approaching: boolean;
-  speed: number;
-  delayMinutes: number;
-  nextStation?: { name: string; schArr: string };
 }

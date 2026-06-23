@@ -1,17 +1,36 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --green: #16a34a;
+  /* Status (safety) colors */
+  --clear: #15803d;
+  --clear-light: #f0fdf4;
+  --clear-border: #86efac;
+  --approaching: #b45309;
+  --approaching-light: #fffbeb;
+  --approaching-border: #fcd34d;
+  --blocked: #dc2626;
+  --blocked-light: #fef2f2;
+  --blocked-border: #fca5a5;
+  --unknown: #64748b;
+  --unknown-light: #f8fafc;
+
+  /* Keep these names for backward compat */
+  --green: #15803d;
   --red: #dc2626;
-  --amber: #d97706;
-  --blue: #2563eb;
-  --bg: #f8fafc;
+  --amber: #b45309;
+  --blue: #1d4ed8;
+
+  /* UI */
+  --bg: #f1f5f9;
   --surface: #ffffff;
   --border: #e2e8f0;
-  --text: #1e293b;
-  --text-muted: #64748b;
-  --header-h: 64px;
-  --sidebar-w: 320px;
+  --text: #0f172a;
+  --text-muted: #475569;
+  --header-h: 58px;
+  --sidebar-w: 360px;
+  --radius: 10px;
+  --shadow: 0 1px 3px rgba(0,0,0,.10), 0 1px 2px rgba(0,0,0,.06);
+  --shadow-md: 0 4px 6px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.06);
 }
 
 html, body { height: 100%; }
@@ -20,12 +39,12 @@ body {
   font-family: system-ui, -apple-system, sans-serif;
   background: var(--bg);
   color: var(--text);
-  font-size: 14px;
+  font-size: 16px;
 }
 
 /* ── Layout ── */
 
-.app { display: flex; flex-direction: column; height: 100vh; }
+.app { display: flex; flex-direction: column; height: 100dvh; }
 .main-layout { display: flex; flex: 1; overflow: hidden; }
 .map-section { flex: 1; position: relative; }
 .map-loading { display: flex; align-items: center; justify-content: center; height: 100%; color: var(--text-muted); }
@@ -46,14 +65,14 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: var(--header-h);
-  padding: 0 20px;
+  height: 100%;
+  padding: 0 16px;
 }
 
 .brand { display: flex; align-items: center; gap: 12px; }
-.brand-icon { font-size: 28px; }
-.brand h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; line-height: 1.2; }
-.brand-sub { font-size: 12px; color: #94a3b8; margin-top: 1px; }
+.brand-icon { font-size: 26px; }
+.brand h1 { font-size: 18px; font-weight: 800; letter-spacing: -0.3px; line-height: 1.2; }
+.brand-sub { font-size: 11px; color: #94a3b8; margin-top: 1px; }
 .header-meta { display: flex; align-items: center; gap: 12px; }
 .refresh-time { font-size: 12px; color: #94a3b8; }
 
@@ -71,10 +90,11 @@ body {
 
 .alert-banner {
   background: #dc2626;
+  color: #fff;
   text-align: center;
-  padding: 6px;
-  font-weight: 600;
-  font-size: 13px;
+  padding: 7px;
+  font-weight: 700;
+  font-size: 14px;
   letter-spacing: 0.3px;
   animation: pulse-bg 1s ease-in-out infinite alternate;
 }
@@ -88,56 +108,129 @@ body {
 
 .sidebar {
   width: var(--sidebar-w);
-  background: var(--surface);
+  background: var(--bg);
   border-left: 1px solid var(--border);
   overflow-y: auto;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
 }
+
+.sidebar::-webkit-scrollbar { width: 5px; }
+.sidebar::-webkit-scrollbar-track { background: transparent; }
+.sidebar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
 
 .loading-sidebar { padding: 24px; color: var(--text-muted); }
 
-/* ── Crossing Status ── */
+/* ── Status Header ── */
 
 .crossing-status { flex: 1; }
 
 .status-header {
+  padding: 16px 16px 8px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  padding: 16px 16px 8px;
-  border-bottom: 1px solid var(--border);
 }
 
-.status-header h2 { font-size: 14px; font-weight: 600; }
-.updated { font-size: 11px; color: var(--text-muted); }
+.status-header h2 {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
 
-.crossing-card { padding: 12px 16px; border-bottom: 1px solid var(--border); }
-.crossing-card.alert { background: #fef2f2; }
+.updated { font-size: 12px; color: var(--text-muted); }
+
+/* ── Crossing Cards ── */
+
+.crossing-card {
+  margin: 12px 12px 0;
+  border-radius: var(--radius);
+  border: 2px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.crossing-card.alert {
+  border-color: var(--approaching-border);
+  background: var(--approaching-light);
+}
+
+.crossing-card.clear {
+  border-color: var(--clear-border);
+}
+
+.crossing-card.blocked {
+  border-color: var(--blocked-border);
+  background: var(--blocked-light);
+}
+
+.crossing-card:last-child { margin-bottom: 12px; }
+
+.crossing-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 10px;
+}
 
 .crossing-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
   display: flex;
   align-items: center;
   gap: 8px;
-  font-weight: 600;
-  font-size: 13px;
-  margin-bottom: 6px;
 }
 
-.no-trains { color: var(--text-muted); font-size: 12px; }
+/* ── Status Pill ── */
 
-.train-eta {
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.status-pill.clear { background: var(--clear); color: #fff; }
+.status-pill.approaching { background: var(--approaching); color: #fff; }
+.status-pill.blocked { background: var(--blocked); color: #fff; }
+.status-pill.unknown { background: #e2e8f0; color: var(--text-muted); }
+
+/* ── Card Body ── */
+
+.crossing-card-body { padding: 0 16px 14px; }
+
+/* ── Train Rows ── */
+
+.train-row {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  padding: 4px 0;
-  font-size: 12px;
+  align-items: flex-start;
+  padding: 6px 0;
+  border-top: 1px solid var(--border);
+  font-size: 14px;
 }
 
-.train-eta.approaching .eta-badge { color: var(--red); font-weight: 600; }
-.train-id { color: var(--text-muted); }
-.eta-badge { font-variant-numeric: tabular-nums; }
+.train-row:first-child { border-top: none; }
+
+.train-name { font-weight: 600; color: var(--text); }
+.train-meta { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+.train-eta-value { font-size: 18px; font-weight: 800; color: var(--approaching); font-variant-numeric: tabular-nums; }
+.train-eta-label { font-size: 11px; color: var(--text-muted); text-align: right; }
 
 /* ── Dot / Badge ── */
 
@@ -150,6 +243,7 @@ body {
 }
 .dot.red { background: var(--red); }
 .dot.green { background: var(--green); }
+.dot.amber { background: var(--amber); }
 
 .badge {
   display: inline-block;
@@ -162,13 +256,36 @@ body {
 .badge.blue { background: var(--blue); }
 .badge.amber { background: var(--amber); }
 
+/* ── Freight Badge ── */
+
+.freight-badge {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 12px;
+  margin: 0 16px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.freight-badge.freight-clear { background: #f0fdf4; color: #15803d; border: 1px solid #86efac; }
+.freight-badge.freight-blocked { background: #fef2f2; color: #dc2626; border: 1px solid #fca5a5; }
+.freight-badge.freight-unknown { background: #f8fafc; color: var(--text-muted); border: 1px solid var(--border); }
+.freight-badge-label { font-weight: 700; }
+.freight-camera-note { display: block; font-size: 11px; opacity: 0.7; margin-top: 2px; }
+
+/* ── No Trains ── */
+
+.no-trains { font-size: 13px; color: var(--text-muted); padding: 4px 0; font-style: italic; }
+
 /* ── Legend ── */
 
 .legend { padding: 14px 16px; border-top: 1px solid var(--border); }
 .legend h3 { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
 .legend-row { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 3px 0; }
 
-/* ── Info box ── */
+/* ── Info Box ── */
 
 .info-box { padding: 14px 16px; border-top: 1px solid var(--border); background: #f8fafc; }
 .info-box h3 { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
@@ -180,10 +297,99 @@ body {
 
 .error-msg { color: var(--red); font-size: 14px; }
 
-/* ── Mobile ── */
+/* ── Skeleton Loading ── */
+
+.skeleton {
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 6px;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeleton-card { height: 120px; margin: 12px; border-radius: var(--radius); }
+
+/* ── Mobile Bottom Nav ── */
+
+.mobile-bottom-nav {
+  display: none;
+}
+
+/* ── Responsive ── */
+
+@media (max-width: 768px) {
+  .main-layout {
+    flex-direction: column-reverse;
+  }
+
+  .map-section { height: 45vh; }
+
+  .sidebar {
+    width: 100%;
+    flex-shrink: 0;
+    max-height: 55vh;
+    overflow-y: auto;
+    border-left: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .legend { display: none; }
+  .info-box { display: none; }
+
+  .mobile-bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #0f172a;
+    border-top: 1px solid rgba(255,255,255,.1);
+    z-index: 1000;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .mobile-bottom-nav a {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 4px;
+    color: #94a3b8;
+    text-decoration: none;
+    font-size: 10px;
+    font-weight: 600;
+    gap: 3px;
+    transition: color 0.15s;
+  }
+
+  .mobile-bottom-nav a.active,
+  .mobile-bottom-nav a:hover { color: #fff; }
+
+  .mobile-bottom-nav .nav-icon { font-size: 20px; }
+
+  .mobile-bottom-nav .dispatch-btn {
+    background: #dc2626;
+    margin: 6px;
+    border-radius: 8px;
+    color: #fff;
+  }
+
+  /* Push app content above bottom nav on mobile */
+  .app { padding-bottom: 64px; }
+}
 
 @media (max-width: 640px) {
-  .main-layout { flex-direction: column; }
-  .map-section { height: 55vh; }
-  .sidebar { width: 100%; height: 45vh; }
+  .brand-sub { display: none; }
+  .brand h1 { font-size: 16px; }
+}
+
+/* ── Dispatch mode — hide nav chrome ── */
+body.dispatch-mode .site-header,
+body.dispatch-mode .mobile-bottom-nav {
+  display: none;
 }

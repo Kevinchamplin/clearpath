@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import styles from "./dispatch.module.css";
 
@@ -49,7 +49,7 @@ interface CrossingAlert {
 interface CrossingView {
   id: string;
   name: string;
-  alerts: CrossingAlert[];   // only approaching trains
+  alerts: CrossingAlert[];
   hasAlert: boolean;
 }
 
@@ -83,16 +83,6 @@ function buildCrossingViews(trains: Train[], crossings: Crossing[]): CrossingVie
   });
 }
 
-// Community reports are simulated in this sprint; replace with real API when available.
-type CommunityReport = { crossingId: string; minutesAgo: number; type: string };
-const DUMMY_REPORTS: CommunityReport[] = [];
-
-function communityReportFor(crossingId: string): CommunityReport | undefined {
-  return DUMMY_REPORTS.find(
-    (r) => r.crossingId === crossingId && r.minutesAgo <= 120
-  );
-}
-
 // ─── Clock component ──────────────────────────────────────────────────────────
 
 function LiveClock() {
@@ -116,14 +106,39 @@ function LiveClock() {
   return <span className={styles.clock}>{time}</span>;
 }
 
+// ─── Loading skeleton ─────────────────────────────────────────────────────────
+
+function LoadingSkeleton() {
+  return (
+    <div className={styles.grid}>
+      {[0, 1, 2, 3].map((i) => (
+        <div key={i} className={styles.skeletonCard}>
+          <div className={`${styles.skeletonLine} ${styles.skeletonTitle}`} />
+          <div className={`${styles.skeletonLine} ${styles.skeletonStatus}`} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function DispatchPage() {
   const [data, setData] = useState<ApiResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [lastRefresh, setLastRefresh] = useState<string | null>(null);
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const [cleared, setCleared] = useState(false);
+  const esRef = useRef<EventSource | null>(null);
 
-  const fetchData = useCallback(async () => {
+  // Add dispatch-mode class to body (hides site header + bottom nav)
+  useEffect(() => {
+    document.body.classList.add("dispatch-mode");
+    return () => {
+      document.body.classList.remove("dispatch-mode");
+    };
+  }, []);
+
+  const fallbackFetch = async () => {
     try {
       const res = await fetch("/api/trains", { cache: "no-store" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -131,28 +146,55 @@ export default function DispatchPage() {
       if (json.error) throw new Error(json.error);
       setData(json);
       setError(null);
-      setLastRefresh(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
+      setLastRefresh(new Date());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     }
+  };
+
+  const connect = () => {
+    if (esRef.current) {
+      esRef.current.close();
+    }
+    const es = new EventSource("/api/trains/stream");
+    esRef.current = es;
+
+    es.onmessage = (evt) => {
+      try {
+        const json: ApiResponse = JSON.parse(evt.data);
+        if (!json.error) {
+          setData(json);
+          setError(null);
+          setLastRefresh(new Date());
+        }
+      } catch {
+        // malformed SSE frame — ignore
+      }
+    };
+
+    es.onerror = () => {
+      es.close();
+      fallbackFetch();
+    };
+  };
+
+  useEffect(() => {
+    connect();
+    return () => {
+      esRef.current?.close();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Initial fetch
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  // Auto-refresh every 15 seconds
-  useEffect(() => {
-    const id = setInterval(fetchData, 15_000);
-    return () => clearInterval(id);
-  }, [fetchData]);
 
   const crossingViews: CrossingView[] = data
     ? buildCrossingViews(data.trains, data.crossings)
     : [];
 
-  const anyAlerting = crossingViews.some((c) => c.hasAlert);
+  const anyAlerting = !cleared && crossingViews.some((c) => c.hasAlert);
+
+  const lastRefreshStr = lastRefresh
+    ? lastRefresh.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+    : null;
 
   return (
     <div className={styles.page}>
@@ -162,8 +204,8 @@ export default function DispatchPage() {
           <span>ClearPath</span> Dispatch — Mendota, IL
         </h1>
         <LiveClock />
-        {lastRefresh && (
-          <span className={styles.refreshBadge}>Refreshed {lastRefresh}</span>
+        {lastRefreshStr && (
+          <span className={styles.refreshBadge}>Updated {lastRefreshStr}</span>
         )}
       </header>
 
@@ -181,26 +223,25 @@ export default function DispatchPage() {
       {/* Error banner */}
       {error && (
         <div className={styles.errorBanner}>
-          Train data unavailable: {error}. Retrying every 15 seconds.
+          Train data unavailable: {error}. Retrying…
         </div>
       )}
 
-      {/* Crossing cards */}
-      {!data && !error && (
-        <p className={styles.loadingText}>Loading crossing data…</p>
-      )}
+      {/* Loading skeleton */}
+      {!data && !error && <LoadingSkeleton />}
 
+      {/* Crossing cards */}
       {data && (
         <div className={styles.grid}>
           {crossingViews.map((crossing) => {
-            const report = communityReportFor(crossing.id);
             const topAlert = crossing.alerts[0];
+            const hasAlert = !cleared && crossing.hasAlert;
 
             return (
               <div
                 key={crossing.id}
                 className={`${styles.card} ${
-                  crossing.hasAlert ? styles.cardAlert : styles.cardClear
+                  hasAlert ? styles.cardAlert : styles.cardClear
                 }`}
               >
                 <div className={styles.crossingName}>{crossing.name}</div>
@@ -208,35 +249,28 @@ export default function DispatchPage() {
                 {/* Status badge */}
                 <div
                   className={`${styles.statusBadge} ${
-                    crossing.hasAlert ? styles.statusAlert : styles.statusClear
+                    hasAlert ? styles.statusAlert : styles.statusClear
                   }`}
                 >
-                  {crossing.hasAlert
+                  {hasAlert
                     ? `⚠ TRAIN IN ${topAlert.etaMinutes} MIN`
-                    : "✓ CLEAR"}
+                    : "✓ ALL CLEAR"}
                 </div>
 
                 {/* Train detail — shown when approaching */}
-                {crossing.hasAlert && topAlert && (
+                {hasAlert && topAlert && (
                   <div className={styles.trainDetail}>
                     <span className={styles.trainDetailLabel}>Train</span>
                     <span className={styles.trainDetailValue}>
                       #{topAlert.trainNumber} {topAlert.trainName}
                     </span>
-                    <span className={styles.trainDetailLabel}>Speed / Delay</span>
+                    <span className={styles.trainDetailLabel}>Speed / Status</span>
                     <span className={styles.trainDetailValue}>
                       {topAlert.speed} mph
                       {topAlert.delayMinutes > 0
                         ? ` — ${topAlert.delayMinutes} min late`
                         : " — On time"}
                     </span>
-                  </div>
-                )}
-
-                {/* Community report */}
-                {report && (
-                  <div className={styles.communityReport}>
-                    📣 Community report: {report.type} blocked {report.minutesAgo} min ago
                   </div>
                 )}
               </div>
@@ -250,9 +284,24 @@ export default function DispatchPage() {
         <Link href="/" className={styles.footerLink}>
           ← Back to Map
         </Link>
-        <Link href="/print" className={styles.footerLink}>
-          Print Crossing Map
-        </Link>
+        {anyAlerting && (
+          <button
+            className={styles.footerLink}
+            style={{ background: "none", border: "none", cursor: "pointer" }}
+            onClick={() => setCleared(true)}
+          >
+            ✕ Clear Alerts
+          </button>
+        )}
+        {cleared && (
+          <button
+            className={styles.footerLink}
+            style={{ background: "none", border: "none", cursor: "pointer" }}
+            onClick={() => setCleared(false)}
+          >
+            ↺ Restore Alerts
+          </button>
+        )}
       </footer>
     </div>
   );

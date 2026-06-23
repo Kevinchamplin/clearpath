@@ -13,6 +13,38 @@ const links = [
   { href: "/dispatch", label: "Dispatch View" },
 ];
 
+const bottomNavLinks = [
+  { href: "/", label: "Map", icon: "🗺" },
+  { href: "/report", label: "Report", icon: "📋" },
+  { href: "/how-it-works", label: "Info", icon: "ℹ" },
+];
+
+export function MobileBottomNav() {
+  const pathname = usePathname();
+
+  return (
+    <nav className="mobile-bottom-nav">
+      {bottomNavLinks.map(({ href, label, icon }) => (
+        <Link
+          key={href}
+          href={href}
+          className={pathname === href ? "active" : ""}
+        >
+          <span className="nav-icon">{icon}</span>
+          {label}
+        </Link>
+      ))}
+      <Link
+        href="/dispatch"
+        className={`dispatch-btn${pathname === "/dispatch" ? " active" : ""}`}
+      >
+        <span className="nav-icon">🚨</span>
+        Dispatch
+      </Link>
+    </nav>
+  );
+}
+
 export default function Nav() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
