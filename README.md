@@ -1,36 +1,63 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ClearPath
 
-## Getting Started
+Real-time Amtrak train position monitor for grade crossings — built for first responders and communities living along busy rail corridors.
 
-First, run the development server:
+**Live demo:** [clearpath.champlinenterprises.com](https://clearpath.champlinenterprises.com)
+
+Built for Mendota, IL (California Zephyr corridor). **Fork it for your town in 5 minutes.**
+
+---
+
+## What it does
+
+- Shows live Amtrak train positions on a map centered on your town
+- Marks every grade crossing with its FRA crossing ID
+- Calculates ETA to each crossing for every nearby train
+- Flashes a red alert banner when a train is within 20 minutes of any crossing
+- Auto-refreshes every 60 seconds — no page reload needed
+- Mobile-friendly for dispatch tablets and phones
+
+## Why
+
+Long trains blocking grade crossings delay first responders. This is a real public safety problem in small towns on freight mainlines. ClearPath gives dispatchers and firefighters a 10–20 minute heads-up to route around blocked crossings.
+
+> **Note:** This tool tracks **Amtrak trains only** — freight train positions are not publicly available. The California Zephyr (trains #5 and #6) runs through Mendota daily.
+
+## Fork for your town
+
+1. Clone the repo
+2. Edit `src/config/town.ts`:
+   - Set your town's name, center lat/lng, and zoom level
+   - Add your grade crossings (get FRA IDs from the [FRA crossing inventory](https://railroads.dot.gov/))
+   - Set `watchTrains` to the Amtrak train numbers that pass through
+3. Deploy to Vercel (free tier)
+
+That's it.
+
+## Stack
+
+- Next.js 14 (App Router) + TypeScript
+- Leaflet / react-leaflet for maps
+- Amtrak's unofficial public map API
+- Vercel (free tier deployment)
+- No database, no auth, no backend
+
+## Run locally
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
 pnpm dev
-# or
-bun dev
+# Open http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Deploy
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+vercel --prod
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## License
 
-## Learn More
+MIT — free forever. Fork it, deploy it, share it.
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Built by [Kevin Champlin](https://champlinenterprises.com) · Mendota, IL
