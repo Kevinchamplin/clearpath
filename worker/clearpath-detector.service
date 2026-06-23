@@ -7,12 +7,12 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=champline
-Group=champline
-WorkingDirectory=/home/champline/clearpath-worker
-EnvironmentFile=/home/champline/clearpath-worker/.env
+Group=psacln
+WorkingDirectory=/var/www/vhosts/champlinenterprises.com/clearpath-worker
+EnvironmentFile=/var/www/vhosts/champlinenterprises.com/clearpath-worker/.env
 
 # Full path to the venv Python binary
-ExecStart=/home/champline/clearpath-worker/venv/bin/python detector.py
+ExecStart=/var/www/vhosts/champlinenterprises.com/clearpath-worker/venv/bin/python detector.py
 
 # Always restart — network blips, yt-dlp failures, etc.
 Restart=always
