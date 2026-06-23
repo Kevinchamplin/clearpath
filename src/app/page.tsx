@@ -11,6 +11,14 @@ interface CommunityReport {
   duration_minutes: number;
 }
 
+interface FreightStatusRecord {
+  crossing_id: string;
+  state: "CLEAR" | "BLOCKED" | "UNKNOWN";
+  confidence: number;
+  blocked_since: string | null;
+  updated_at: string;
+}
+
 // Leaflet must not SSR
 const TrainMap = dynamic(() => import("@/components/TrainMap"), { ssr: false });
 
@@ -51,14 +59,14 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [communityReports, setCommunityReports] = useState<CommunityReport[]>([]);
+  const [freightStatus, setFreightStatus] = useState<FreightStatusRecord[]>([]);
   const esRef = useRef<EventSource | null>(null);
 
-  // Fetch community reports periodically
+  // Fetch community reports and freight camera status periodically
   const fetchReports = useCallback(async () => {
     try {
       const res = await fetch("/api/report");
       if (!res.ok) return;
-      // API returns { crossing, ... } but CrossingStatus expects { crossingId, ... }
       const raw: Array<{ crossing: string; reported_at: string; duration_minutes: number | null }> = await res.json();
       setCommunityReports(
         raw.map((r) => ({
@@ -67,9 +75,16 @@ export default function Home() {
           duration_minutes: r.duration_minutes ?? 0,
         }))
       );
-    } catch {
-      // non-fatal
-    }
+    } catch { /* non-fatal */ }
+  }, []);
+
+  const fetchFreightStatus = useCallback(async () => {
+    try {
+      const res = await fetch("/api/freight-status");
+      if (!res.ok) return;
+      const data: FreightStatusRecord[] = await res.json();
+      setFreightStatus(data);
+    } catch { /* non-fatal — worker may not be running */ }
   }, []);
 
   // Fallback: one-shot fetch from /api/trains
@@ -100,9 +115,11 @@ export default function Home() {
       });
     }
 
-    // Fetch community reports on mount and every 2 minutes
+    // Fetch community reports + freight camera status on mount and periodically
     fetchReports();
+    fetchFreightStatus();
     const reportInterval = setInterval(fetchReports, 120_000);
+    const freightInterval = setInterval(fetchFreightStatus, 30_000);
 
     const connect = () => {
       if (esRef.current) {
@@ -142,12 +159,13 @@ export default function Home() {
 
     return () => {
       clearInterval(reportInterval);
+      clearInterval(freightInterval);
       if (esRef.current) {
         esRef.current.close();
         esRef.current = null;
       }
     };
-  }, [fallbackFetch, fetchReports]);
+  }, [fallbackFetch, fetchReports, fetchFreightStatus]);
 
   const hasApproaching = data?.trains.some((t) =>
     t.crossings.some((c) => c.approaching)
@@ -203,6 +221,7 @@ export default function Home() {
                 fetchedAt={data.fetchedAt}
                 communityReports={communityReports}
                 viaductNote={config.viaductNote}
+                freightStatus={freightStatus}
               />
 
               {data.trains.some((t) => t.nextStation) && (
@@ -248,8 +267,8 @@ export default function Home() {
               Helps first responders plan routes around blocked grade crossings.
             </p>
             <p>
-              <strong>Note:</strong> Freight train data is not publicly available.
-              This tool tracks Amtrak trains only.
+              <strong>Freight:</strong> detected via public camera (best-effort).
+              Camera inference is not authoritative dispatch data.
             </p>
             <p>
               <a

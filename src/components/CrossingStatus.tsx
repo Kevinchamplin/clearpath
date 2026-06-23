@@ -24,11 +24,20 @@ interface CommunityReport {
   duration_minutes: number;
 }
 
+export interface FreightStatus {
+  crossing_id: string;
+  state: "CLEAR" | "BLOCKED" | "UNKNOWN";
+  confidence: number;
+  blocked_since: string | null;
+  updated_at: string;
+}
+
 interface Props {
   trains: TrainWithCrossings[];
   fetchedAt: string;
   communityReports?: CommunityReport[];
   viaductNote?: string;
+  freightStatus?: FreightStatus[];
 }
 
 export default function CrossingStatus({
@@ -36,6 +45,7 @@ export default function CrossingStatus({
   fetchedAt,
   communityReports = [],
   viaductNote,
+  freightStatus = [],
 }: Props) {
   // Build per-crossing view: which trains are closest and approaching
   const crossingMap: Record<string, { name: string; alerts: CrossingAlert[]; alternateRouteNote?: string }> = {};
@@ -122,6 +132,41 @@ export default function CrossingStatus({
               <span className={`dot ${hasAlert ? "red" : "green"}`} />
               {crossing.name}
             </div>
+
+            {/* Camera-based freight detection badge */}
+            {(() => {
+              const fs = freightStatus.find((f) => f.crossing_id === id);
+              if (!fs) return null;
+              const ageMin = Math.floor(
+                (nowMs - new Date(fs.updated_at).getTime()) / 60000
+              );
+              const blockedMin = fs.blocked_since
+                ? Math.floor((nowMs - new Date(fs.blocked_since).getTime()) / 60000)
+                : null;
+              const { bg, border, text, icon } = {
+                BLOCKED: { bg: "#fef2f2", border: "#dc2626", text: "#991b1b", icon: "🔴" },
+                CLEAR:   { bg: "#f0fdf4", border: "#16a34a", text: "#14532d", icon: "🟢" },
+                UNKNOWN: { bg: "#f8fafc", border: "#94a3b8", text: "#475569", icon: "⚫" },
+              }[fs.state];
+              return (
+                <div style={{
+                  background: bg, border: `1px solid ${border}`,
+                  borderRadius: "4px", padding: "6px 10px", margin: "6px 0",
+                  fontSize: "0.8rem", color: text,
+                }}>
+                  {icon} Freight ({fs.state === "BLOCKED"
+                    ? `blocked ${blockedMin ?? "?"}m`
+                    : fs.state === "CLEAR" ? "clear" : "status unknown"
+                  })
+                  <span style={{ marginLeft: 8, opacity: 0.65 }}>
+                    · updated {ageMin}m ago
+                  </span>
+                  <span style={{ display: "block", opacity: 0.55, marginTop: 2, fontSize: "0.72rem" }}>
+                    📷 camera inference — not authoritative dispatch data
+                  </span>
+                </div>
+              );
+            })()}
 
             {/* Community freight report */}
             {report && (

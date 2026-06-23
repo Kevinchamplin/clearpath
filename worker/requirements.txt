@@ -1,0 +1,6 @@
+ultralytics>=8.0.0
+opencv-python-headless>=4.8.0
+pymysql>=1.1.0
+python-dotenv>=1.0.0
+numpy>=1.24.0
+# yt-dlp and ffmpeg are installed as system packages — see README

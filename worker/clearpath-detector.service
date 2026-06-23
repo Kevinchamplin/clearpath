@@ -1,0 +1,30 @@
+[Unit]
+Description=ClearPath Freight Detection Worker
+Documentation=https://github.com/Kevinchamplin/clearpath/tree/main/worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=champline
+Group=champline
+WorkingDirectory=/home/champline/clearpath-worker
+EnvironmentFile=/home/champline/clearpath-worker/.env
+
+# Full path to the venv Python binary
+ExecStart=/home/champline/clearpath-worker/venv/bin/python detector.py
+
+# Always restart — network blips, yt-dlp failures, etc.
+Restart=always
+RestartSec=15
+
+# Stream output to journald (view with: journalctl -u clearpath-detector -f)
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=clearpath-detector
+
+# Soft memory limit — YOLO + ffmpeg can use ~500MB
+MemoryMax=800M
+
+[Install]
+WantedBy=multi-user.target
