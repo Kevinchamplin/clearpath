@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+### Added (2026-06-23, freight-detection-worker) [2.5h]
+- Python YOLO freight detection worker (worker/) — samples Steel Highway YouTube railcam at 1fps, detects trains via YOLOv8n, writes CLEAR/BLOCKED/UNKNOWN to MySQL
+- MySQL clearpath DB on ce-prod with crossing_status table (migration + clearpath_user provisioned)
+- PHP endpoint (clearpath-status.php on crm vhost) — reads crossing_status, serves JSON to Next.js
+- Next.js /api/freight-status proxy route + 30s polling; camera-based freight badge per crossing in CrossingStatus
+- Systemd service (clearpath-detector) on ce-prod — auto-restarts, MemoryMax=800M, enabled at boot
+- Stream URL: https://www.youtube.com/watch?v=R4VPI-pSrlQ (Steel Highway Mendota railcam)
+- All freight UI labeled "📷 camera inference — not authoritative dispatch data"
+
 ### Added (2026-06-23, sprint-5-community) [1h]
 - Community blockage report form (/report) with BNSF and FRA contact info
 - Illinois Valley corridor page (/corridor) with fork-for-your-town guide

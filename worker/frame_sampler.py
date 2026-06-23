@@ -5,6 +5,8 @@ frames at the configured FPS via ffmpeg. Yields numpy BGR arrays or None.
 None means the stream is unavailable — caller must emit UNKNOWN.
 """
 import subprocess
+import sys
+import os
 import numpy as np
 import logging
 import time
@@ -14,13 +16,20 @@ import config
 
 log = logging.getLogger(__name__)
 
+# Use yt-dlp from the same venv as this Python binary so systemd PATH doesn't matter
+_VENV_BIN = os.path.dirname(sys.executable)
+_YTDLP = os.path.join(_VENV_BIN, "yt-dlp") if os.path.exists(os.path.join(_VENV_BIN, "yt-dlp")) else "yt-dlp"
+
 
 def _resolve_stream_url(youtube_url: str) -> Optional[str]:
     """Call yt-dlp to get the best direct stream URL (max 720p)."""
     try:
+        node_bin = os.path.join(_VENV_BIN, "node") if os.path.exists(os.path.join(_VENV_BIN, "node")) else "/usr/bin/node"
+        js_runtime = f"node:{node_bin}" if os.path.exists(node_bin) else "node"
         result = subprocess.run(
             [
-                "yt-dlp", "-g", "--no-playlist",
+                _YTDLP, "--js-runtimes", js_runtime,
+                "-g", "--no-playlist",
                 "-f", "best[height<=720]/best",
                 youtube_url,
             ],
