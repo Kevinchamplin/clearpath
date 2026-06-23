@@ -1,107 +1,67 @@
-// Amtrak's unofficial public map API.
-// Endpoint and decryption approach are well-documented in the open source community
-// (e.g. github.com/piemadd/amtraker, github.com/mgwalker/amtrak-api).
+// Train data via the amtraker public API (api.amtraker.com/v3)
+// Maintained by Piemadd — a clean JSON wrapper around Amtrak's encrypted map API.
 
 export interface TrainPosition {
   trainNumber: string;
   trainName: string;
   lat: number;
   lng: number;
-  speed: number;         // mph
-  heading: string;       // "N", "NE", "E", etc.
-  lastUpdated: string;   // ISO string
+  speed: number;       // mph
+  heading: string;     // "N", "NE", "SW", etc.
+  lastUpdated: string; // ISO string
   originCode: string;
   destCode: string;
-  scheduledArrival?: string;
-  estimatedArrival?: string;
   statusMsg: string;
   delayMinutes: number;
 }
 
-// Amtrak stores train data behind a light encryption layer.
-// The key/salt live in their public JS bundle — many open source projects
-// document this. We use the same approach as amtraker.
-const AMTRAK_S = "9a3686ac";
-const AMTRAK_S2 = "jxL83+nkXDeFcdBocHMJrsWos";
-
-async function decryptAmtrakData(encrypted: string): Promise<unknown> {
-  // Amtrak uses AES-256-CBC with a key derived from S+S2 via SHA-256 (first 32 bytes)
-  // and IV from the first 16 bytes of the ciphertext (base64-decoded).
-  // This is publicly documented at https://github.com/mgwalker/amtrak-api
-  const masterKey = AMTRAK_S + AMTRAK_S2;
-  const keyData = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(masterKey).slice(0, 32),
-    { name: "AES-CBC" },
-    false,
-    ["decrypt"]
-  );
-
-  const raw = Uint8Array.from(atob(encrypted), (c) => c.charCodeAt(0));
-  const iv = raw.slice(0, 16);
-  const ciphertext = raw.slice(16);
-
-  const decrypted = await crypto.subtle.decrypt(
-    { name: "AES-CBC", iv },
-    keyData,
-    ciphertext
-  );
-
-  const text = new TextDecoder().decode(decrypted);
-  return JSON.parse(text);
-}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AmtrakerTrain = Record<string, any>;
 
 export async function fetchTrains(trainNumbers?: string[]): Promise<TrainPosition[]> {
-  const res = await fetch(
-    "https://maps.amtrak.com/services/MapDataService/trains/getTrainsData",
-    { next: { revalidate: 60 } }
-  );
+  const url = "https://api.amtraker.com/v3/trains";
+  const res = await fetch(url, { next: { revalidate: 60 } });
+  if (!res.ok) throw new Error(`amtraker API error: ${res.status}`);
 
-  if (!res.ok) throw new Error(`Amtrak API error: ${res.status}`);
+  const json: Record<string, AmtrakerTrain[]> = await res.json();
 
-  const json = await res.json();
+  const results: TrainPosition[] = [];
 
-  // The response has a "features" array where each feature's "properties.encrypted"
-  // holds the train data ciphertext.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const features: any[] = json?.features ?? [];
+  for (const [num, instances] of Object.entries(json)) {
+    if (trainNumbers && !trainNumbers.includes(num)) continue;
 
-  const trains: TrainPosition[] = [];
+    for (const t of instances) {
+      if (t.trainState !== "Active") continue;
 
-  for (const feature of features) {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const props: any = await decryptAmtrakData(feature.properties.encrypted);
-      const trainNum = String(props.TrainNum ?? "");
-
-      if (trainNumbers && !trainNumbers.includes(trainNum)) continue;
-
-      trains.push({
-        trainNumber: trainNum,
-        trainName: props.RouteName ?? "",
-        lat: feature.geometry?.coordinates?.[1] ?? 0,
-        lng: feature.geometry?.coordinates?.[0] ?? 0,
-        speed: Number(props.Velocity ?? 0),
-        heading: props.Heading ?? "",
-        lastUpdated: props.LastValTS ?? new Date().toISOString(),
-        originCode: props.OrigCode ?? "",
-        destCode: props.DestCode ?? "",
-        statusMsg: props.StatusMsg ?? "",
-        delayMinutes: Number(props.CumNewDlyAmt ?? 0),
+      results.push({
+        trainNumber: String(t.trainNum ?? num),
+        trainName: String(t.routeName ?? ""),
+        lat: Number(t.lat),
+        lng: Number(t.lon),
+        speed: Number(t.velocity ?? 0),
+        heading: String(t.heading ?? ""),
+        lastUpdated: String(t.lastValTS ?? t.updatedAt ?? ""),
+        originCode: String(t.origCode ?? ""),
+        destCode: String(t.destCode ?? ""),
+        statusMsg: String(t.statusMsg ?? "").trim(),
+        // amtraker doesn't expose delay minutes directly; trainTimely is a string
+        delayMinutes: parseDelayMinutes(t.trainTimely),
       });
-    } catch {
-      // skip malformed entries
     }
   }
 
-  return trains;
+  return results;
 }
 
-// Haversine distance in miles between two lat/lng points
-export function distanceMiles(
-  lat1: number, lng1: number,
-  lat2: number, lng2: number
-): number {
+function parseDelayMinutes(timely: string): number {
+  if (!timely || timely === "" || timely.toLowerCase().includes("on time")) return 0;
+  // e.g. "15 Minutes Late" → 15
+  const match = timely.match(/(\d+)\s*min/i);
+  return match ? parseInt(match[1], 10) : 0;
+}
+
+// Haversine distance in miles
+export function distanceMiles(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 3958.8;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLng = ((lng2 - lng1) * Math.PI) / 180;
@@ -113,7 +73,7 @@ export function distanceMiles(
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// Estimate minutes until a train reaches a crossing given speed + distance
+// Estimate minutes until a train reaches a crossing
 export function etaMinutes(distMiles: number, speedMph: number): number | null {
   if (speedMph < 1) return null;
   return Math.round((distMiles / speedMph) * 60);
