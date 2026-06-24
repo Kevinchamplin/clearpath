@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Added (2026-06-23, train-info-modal) [0.5h]
+- Hover (desktop) / tap (mobile) a train marker on the map → rich info modal slides in from the top-right
+- Fetches Wikipedia thumbnail live (REST API) so photo is always current — no hardcoded image URLs
+- Shows: train badge + name + type, live speed / delay / distance / ETA stat row, route, service frequency, locomotive, consist, car count, estimated length, weight, max speed, fun fact callout, Wikipedia link
+- Static train database in `src/lib/trainInfo.ts` — California Zephyr, Empire Builder, Southwest Chief, Lake Shore Limited, Capitol Limited, Illinois Service (by train number range)
+- Modal stays open while hovering it (cancel-close timer); closes on ✕ button, click-outside, or leaving the marker + modal area; mobile adapts to bottom-sheet style
+
 ### Changed (2026-06-23, world-class-safety-ui) [3h]
 - globals.css — complete safety-first design system: 16px base, `--clear`/`--approaching`/`--blocked` tokens, card-panel crossings with shadow, shimmer skeleton animation, `100dvh` layout, mobile `flex-direction: column-reverse` puts status cards ABOVE map
 - CrossingStatus.tsx — status pill (CLEAR / IN X MIN / BLOCKED) answers "can I cross?" at a glance; big 18px tabular ETA numbers; MAX_ETA_MIN=480 filter (no 6000-min trains); .slice(0,3) cap; nextStation null guard; freight badge via CSS classes

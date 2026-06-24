@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Map as LeafletMap } from "leaflet";
 import type { TownConfig, Crossing } from "@/config/town";
 import type { TrainPosition } from "@/lib/amtrak";
+import TrainInfoModal, { type SelectedTrain } from "./TrainInfoModal";
 
 interface Props {
   config: TownConfig;
@@ -21,11 +22,29 @@ interface CrossingEta {
 export default function TrainMap({ config, trains }: Props) {
   const mapRef = useRef<LeafletMap | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [selectedTrain, setSelectedTrain] = useState<SelectedTrain | null>(null);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Ref so Leaflet event handlers always call the latest setter (stale-closure safe)
+  const openModalRef = useRef<(t: SelectedTrain) => void>(() => {});
+  const scheduleCloseRef = useRef<() => void>(() => {});
+
+  openModalRef.current = (t: SelectedTrain) => {
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    setSelectedTrain(t);
+  };
+
+  scheduleCloseRef.current = () => {
+    closeTimerRef.current = setTimeout(() => setSelectedTrain(null), 450);
+  };
+
+  const cancelClose = () => {
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+  };
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
-    // Leaflet must be imported client-side (no SSR)
     import("leaflet").then((L) => {
       // Fix default marker icon paths broken by webpack
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -65,8 +84,7 @@ export default function TrainMap({ config, trains }: Props) {
           .bindPopup(`<strong>${c.name}</strong><br/>FRA ID: ${c.id}`);
       });
 
-      // Train markers
-      renderTrains(L, map, trains, config.crossings);
+      renderTrains(L, map, trains, config.crossings, openModalRef, scheduleCloseRef);
     });
 
     return () => {
@@ -80,16 +98,34 @@ export default function TrainMap({ config, trains }: Props) {
   useEffect(() => {
     if (!mapRef.current) return;
     import("leaflet").then((L) => {
-      // Remove existing train layers
       mapRef.current!.eachLayer((layer) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if ((layer as any)._isTrain) mapRef.current!.removeLayer(layer);
       });
-      renderTrains(L, mapRef.current!, trains, config.crossings);
+      renderTrains(L, mapRef.current!, trains, config.crossings, openModalRef, scheduleCloseRef);
     });
   }, [trains, config.crossings]);
 
-  return <div ref={containerRef} style={{ height: "100%", width: "100%" }} />;
+  return (
+    <div style={{ height: "100%", width: "100%", position: "relative" }}>
+      {/* Leaflet owns this div — never put React children inside it */}
+      <div ref={containerRef} style={{ height: "100%", width: "100%" }} />
+
+      {/* Train info modal — sibling to the map, overlaid via CSS */}
+      {selectedTrain && (
+        <div
+          className="train-modal-overlay"
+          onMouseEnter={cancelClose}
+          onMouseLeave={() => scheduleCloseRef.current()}
+        >
+          <TrainInfoModal
+            train={selectedTrain}
+            onClose={() => setSelectedTrain(null)}
+          />
+        </div>
+      )}
+    </div>
+  );
 }
 
 function renderTrains(
@@ -98,7 +134,9 @@ function renderTrains(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   map: any,
   trains: (TrainPosition & { crossings: CrossingEta[] })[],
-  crossings: Crossing[]
+  crossings: Crossing[],
+  openModalRef: React.MutableRefObject<(t: TrainPosition & { crossings: CrossingEta[] }) => void>,
+  scheduleCloseRef: React.MutableRefObject<() => void>
 ) {
   trains.forEach((train) => {
     const hasApproaching = train.crossings.some((c) => c.approaching);
@@ -111,38 +149,20 @@ function renderTrains(
         font-size:11px;font-weight:700;
         padding:3px 7px;border-radius:12px;
         box-shadow:0 2px 8px rgba(0,0,0,.35);
-        white-space:nowrap;
+        white-space:nowrap;cursor:pointer;
         ${hasApproaching ? "animation:pulse 1s infinite;" : ""}
       ">🚆 ${train.trainNumber}</div>`,
       iconSize: [60, 24],
       iconAnchor: [30, 12],
     });
 
-    const closestCrossing = [...train.crossings].sort(
-      (a, b) => a.distanceMiles - b.distanceMiles
-    )[0];
+    const marker = L.marker([train.lat, train.lng], { icon: trainIcon }).addTo(map);
 
-    const popupLines = crossings.map((c) => {
-      const eta = train.crossings.find((tc) => tc.crossingId === c.id);
-      const etaStr =
-        eta?.etaMinutes != null
-          ? `<span style="color:${eta.approaching ? "#dc2626" : "#374151"}">${eta.etaMinutes} min</span>`
-          : "—";
-      return `<tr><td style="padding:2px 8px 2px 0">${c.name}</td><td>${etaStr}</td></tr>`;
-    });
-
-    const marker = L.marker([train.lat, train.lng], { icon: trainIcon })
-      .addTo(map)
-      .bindPopup(`
-        <strong>Train ${train.trainNumber} — ${train.trainName}</strong><br/>
-        Speed: ${train.speed} mph &nbsp;|&nbsp; Heading: ${train.heading}<br/>
-        Delay: ${train.delayMinutes > 0 ? `+${train.delayMinutes} min` : "on time"}<br/>
-        Nearest crossing: ${closestCrossing?.distanceMiles} mi<br/><br/>
-        <table style="font-size:12px;width:100%">
-          <thead><tr><th style="text-align:left">Crossing</th><th>ETA</th></tr></thead>
-          <tbody>${popupLines.join("")}</tbody>
-        </table>
-      `);
+    // Desktop: hover to open, leave to start close timer
+    marker.on("mouseover", () => openModalRef.current(train));
+    marker.on("mouseout", () => scheduleCloseRef.current());
+    // Mobile / click: toggle
+    marker.on("click", () => openModalRef.current(train));
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (marker as any)._isTrain = true;
