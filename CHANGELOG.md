@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Fixed (2026-06-24, report-persistence) [0.25h]
+- Community reports now persist to MySQL on ce-prod (were silently dropped on Vercel serverless cold-start — module-level array reset every invocation)
+- New PHP endpoint `clearpath-reports.php` on crm vhost — POST inserts to `community_reports` table, GET returns last 48h (max 100 rows)
+- `/api/report` Next.js route rewritten to proxy to PHP endpoint; `REPORTS_URL` Vercel env var set
+- `community_reports` table created in clearpath DB with indexes on crossing_id + reported_at
+
 ### Added (2026-06-23, train-info-modal) [0.5h]
 - Hover (desktop) / tap (mobile) a train marker on the map → rich info modal slides in from the top-right
 - Fetches Wikipedia thumbnail live (REST API) so photo is always current — no hardcoded image URLs

@@ -1,61 +1,39 @@
-// TODO: persist to MySQL on ce-prod or Vercel KV for durability
+export const runtime = "nodejs";
 
-export const runtime = 'nodejs'
-
-interface Report {
-  id: string
-  crossing: string
-  railroad: string
-  reported_at: string
-  duration_minutes: number | null
-  description: string
-  reporter_name: string
-  submitted_at: string
-}
-
-const reports: Report[] = []
+const REPORTS_URL = process.env.REPORTS_URL; // https://crm.champlinenterprises.com/clearpath-reports.php
 
 export async function GET() {
-  const newest = [...reports].reverse().slice(0, 50)
-  return Response.json(newest)
+  if (!REPORTS_URL) return Response.json([]);
+  try {
+    const res = await fetch(REPORTS_URL, { next: { revalidate: 30 } });
+    if (!res.ok) return Response.json([]);
+    return Response.json(await res.json());
+  } catch {
+    return Response.json([]);
+  }
 }
 
 export async function POST(request: Request) {
-  let body: Partial<Report>
+  if (!REPORTS_URL) {
+    return Response.json({ error: "Reports endpoint not configured" }, { status: 503 });
+  }
+
+  let body: unknown;
   try {
-    body = await request.json()
+    body = await request.json();
   } catch {
-    return Response.json({ error: 'Invalid JSON' }, { status: 400 })
+    return Response.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { crossing, railroad, reported_at, duration_minutes, description, reporter_name } = body as {
-    crossing?: string
-    railroad?: string
-    reported_at?: string
-    duration_minutes?: number | null
-    description?: string
-    reporter_name?: string
+  try {
+    const res = await fetch(REPORTS_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    return Response.json(data, { status: res.status });
+  } catch {
+    return Response.json({ error: "Reports service unavailable" }, { status: 502 });
   }
-
-  if (!crossing || !railroad || !reported_at) {
-    return Response.json(
-      { error: 'Missing required fields: crossing, railroad, reported_at' },
-      { status: 422 }
-    )
-  }
-
-  const report: Report = {
-    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    crossing,
-    railroad,
-    reported_at,
-    duration_minutes: duration_minutes ?? null,
-    description: description ?? '',
-    reporter_name: reporter_name ?? '',
-    submitted_at: new Date().toISOString(),
-  }
-
-  reports.push(report)
-
-  return Response.json(report, { status: 201 })
 }
