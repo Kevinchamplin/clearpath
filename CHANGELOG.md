@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Changed (2026-11-19, codex-loads-claude-md) [0h] NOT BILLED
+- Codex now loads this repo's CLAUDE.md through an AGENTS.override.md link; the generated AGENTS.md had hidden it.
+
 ### Fixed (2026-06-24, report-persistence) [0.25h]
 - Community reports now persist to MySQL on ce-prod (were silently dropped on Vercel serverless cold-start — module-level array reset every invocation)
 - New PHP endpoint `clearpath-reports.php` on crm vhost — POST inserts to `community_reports` table, GET returns last 48h (max 100 rows)
